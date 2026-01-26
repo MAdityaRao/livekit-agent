@@ -31,4 +31,6 @@ jobs:
             ELEVEN_API_KEY=${{ secrets.ELEVEN_API_KEY }},voiceId=${{ secrets.voiceId }}
         with:
           OPERATION: deploy
-          WORKING_DIRECTORY: . # Assumes livekit.toml is in the root folder
+          WORKING_DIRECTORY: .
+          AGENT_IDS: ${{ secrets.AGENT_ID }}
+  # Assumes livekit.toml is in the root folder

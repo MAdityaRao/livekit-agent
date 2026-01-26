@@ -3,13 +3,12 @@ name: Deploy Agent to LiveKit Cloud
 on:
   push:
     branches:
-      - main  # Change this to 'master' if that is your primary branch
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Concurrency ensures that if you push twice quickly, the first build cancels 
-    # so the newest code always wins.
+
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
@@ -21,16 +20,18 @@ jobs:
       - name: Deploy LiveKit Cloud Agent
         uses: livekit/deploy-action@v2.12.1
         env:
+          # LiveKit Cloud credentials
           LIVEKIT_URL: ${{ secrets.LIVEKIT_URL }}
           LIVEKIT_API_KEY: ${{ secrets.LIVEKIT_API_KEY }}
           LIVEKIT_API_SECRET: ${{ secrets.LIVEKIT_API_SECRET }}
-          
-          # This list tells LiveKit which secrets to inject into your Python code
-          # Note: No spaces after commas in the list below.
+
+          # 🚨 REQUIRED: Agent ID (this is what was missing before)
+          INPUT_AGENT_IDS: ${{ secrets.AGENT_ID }}
+
+          # Secrets injected into the Python agent
           SECRET_LIST: |
             ELEVEN_API_KEY=${{ secrets.ELEVEN_API_KEY }},voiceId=${{ secrets.voiceId }}
+
         with:
           OPERATION: deploy
           WORKING_DIRECTORY: .
-          agent_ids: ${{ secrets.AGENT_ID }}
-  # Assumes livekit.toml is in the root folder

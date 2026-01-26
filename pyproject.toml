@@ -15,10 +15,6 @@ dependencies = [
     "livekit-plugins-silero",
     "livekit-plugins-elevenlabs",
     "livekit-plugins-noise-cancellation",
-    "python-dotenv",
-    "fastapi",
-    "uvicorn",
-    "livekit-api"
 ]
 
 [dependency-groups]

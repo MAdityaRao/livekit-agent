@@ -1,9 +1,6 @@
 [agent]
-# This points to your agent script
+name = "torq-agent"   # <--- ADD THIS LINE
 entrypoint = "src/agent.py"
 
 [deployment]
-# Since you are using a pyproject.toml/uv structure, 
-# this ensures the cloud environment builds correctly.
 project_type = "python"
-#run

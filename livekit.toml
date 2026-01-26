@@ -1,7 +1,5 @@
-[agent]
-name = "torq-agent"
-subdomain="aiagent-avy0myx4"
-entrypoint = "src/agent.py"
+[project]
+  subdomain = "aiagent-avy0myx4"
 
-[deployment]
-project_type = "python"
+[agent]
+  id = "CA_LVixNemVzdPi"

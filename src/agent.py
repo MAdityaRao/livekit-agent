@@ -1,7 +1,7 @@
 import logging
 import os
 from dotenv import load_dotenv
-from livekit import rtc
+from livekit import rtc, api
 from livekit.agents import (
     Agent,
     AgentServer,
@@ -12,13 +12,44 @@ from livekit.agents import (
     inference,
     room_io,
 )
-from livekit.plugins import noise_cancellation, silero,elevenlabs
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.plugins import noise_cancellation, silero, elevenlabs
+
+# ADD THESE IMPORTS
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+from threading import Thread
 
 logger = logging.getLogger("agent")
 
 load_dotenv(".env.local")
 
+# ADD TOKEN SERVER
+token_app = FastAPI()
+
+token_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows your GitHub Pages site
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@token_app.get("/token")
+def get_token():
+    token = api.AccessToken(
+        api_key=os.getenv("LIVEKIT_API_KEY"),
+        api_secret=os.getenv("LIVEKIT_API_SECRET")
+    )
+    token.with_identity(f"user-{os.urandom(4).hex()}").with_grants(
+        api.VideoGrants(
+            room_join=True, 
+            room="agent-room",
+            can_publish=True,
+            can_subscribe=True
+        )
+    )
+    return {"token": token.to_jwt()}
 
 class Assistant(Agent):
     def __init__(self) -> None:
@@ -33,52 +64,33 @@ Rules:
 - Ask only one essential question at a time.
 - Do not ask for contact details.
 - Do not explain tech stack or integration details.
-- after 3 responses, always ask if they would like to book a meeting with us
+- after 3 responses, always ask if they would like to book a meeting with us 
 - If outside scope, say: "I can only assist with Torq Agents demo services."
 - Always promote booking a meeting at the website's booking page.
-"""),
+""")
 
 server = AgentServer()
-
 
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
 
-
 server.setup_fnc = prewarm
-
 
 @server.rtc_session()
 async def my_agent(ctx: JobContext):
-    # Logging setup
-    # Add any other context you want in all log entries here
     ctx.log_context_fields = {
         "room": ctx.room.name,
     }
 
-    # Set up a voice AI pipeline using OpenAI, Cartesia, AssemblyAI, and the LiveKit turn detector
     session = AgentSession(
-        # Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
-        # See all available models at https://docs.livekit.io/agents/models/stt/
         stt=inference.STT(model="assemblyai/universal-streaming", language="en"),
-        # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
-        # See all available models at httpss://docs.livekit.io/agents/models/llm/
         llm=inference.LLM(model="openai/gpt-4.1-mini"),
-        # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
-        # See all available models as well as voice selections at https://docs.livekit.io/agents/models/tts/
-        tts=elevenlabs.TTS(api_key=os.getenv("ELEVEN_API_KEY"),voice_id=os.getenv("voiceId"),),
-        # VAD and turn detection are used to determine when the user is speaking and when the agent should respond
-        # See more at https://docs.livekit.io/agents/build/turns
+        tts=inference.TTS(model="elevenlabs/eleven_flash_v2", language="en"),
         turn_detection=None,
         vad=ctx.proc.userdata["vad"],
-        # allow the LLM to generate a response while waiting for the end of turn
-        # See more at https://docs.livekit.io/agents/build/audio/#preemptive-generation
         preemptive_generation=True,
     )
 
-    
-
-    # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
         agent=Assistant(),
         room=ctx.room,
@@ -91,12 +103,16 @@ async def my_agent(ctx: JobContext):
         ),
     )
 
-    # 🔥 Agent talks first
     await session.say(
         " Welcome to the Torq Agents how can i help you. "
     )
 
     await ctx.connect()
-if __name__ == "__main__":
-    cli.run_app(server)
 
+# START TOKEN SERVER IN BACKGROUND
+def run_token_server():
+    uvicorn.run(token_app, host="0.0.0.0", port=8000)
+
+if __name__ == "__main__":
+    Thread(target=run_token_server, daemon=True).start()
+    cli.run_app(server)

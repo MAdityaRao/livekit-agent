@@ -15,6 +15,7 @@ dependencies = [
     "livekit-plugins-silero",
     "livekit-plugins-elevenlabs",
     "livekit-plugins-noise-cancellation",
+    "python-dotenv"
 ]
 
 [dependency-groups]

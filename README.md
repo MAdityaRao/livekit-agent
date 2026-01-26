@@ -23,7 +23,7 @@ A production-ready voice agent built with LiveKit Agents framework, featuring AI
   - Configurable environment variables
   - Docker-ready deployment
 
-## 🚀 Quick Start
+
 
 ### Prerequisites
 

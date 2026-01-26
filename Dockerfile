@@ -45,8 +45,7 @@ RUN mkdir -p src
 # Install Python dependencies using UV's lock file
 # --locked ensures we use exact versions from uv.lock for reproducible builds
 # This creates a virtual environment and installs all dependencies
-# Ensure your uv.lock file is checked in for consistency across environments
-RUN uv sync --locked
+RUN uv sync 
 
 # Copy all remaining pplication files into the container
 # This includes source code, configuration files, and dependency specifications

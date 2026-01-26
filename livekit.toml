@@ -1,5 +1,6 @@
 [agent]
-name = "torq-agent"   # <--- ADD THIS LINE
+name = "torq-agent"
+subdomain="aiagent-avy0myx4"
 entrypoint = "src/agent.py"
 
 [deployment]

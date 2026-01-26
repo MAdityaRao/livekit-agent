@@ -32,5 +32,5 @@ jobs:
         with:
           OPERATION: deploy
           WORKING_DIRECTORY: .
-          AGENT_IDS: ${{ secrets.AGENT_ID }}
+          agent_ids: ${{ secrets.AGENT_ID }}
   # Assumes livekit.toml is in the root folder

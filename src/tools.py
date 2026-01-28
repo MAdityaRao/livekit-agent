@@ -10,12 +10,12 @@ ROOM_PRICE = 5000
 # FIX: Removed "(llm.FunctionContext)" - just use a normal class now!
 class HotelAssistant:
     
-    @llm.ai_callable(description="Check room availability for a date range.")
+    @llm.Tool(description="Check room availability for given check-in and check-out dates.")
     def check_availability(self, check_in: str, check_out: str):
         # We assume availability is always open for the demo
         return f"Yes, we have rooms available from {check_in} to {check_out} at {ROOM_PRICE} INR per night."
 
-    @llm.ai_callable(description="Finalize the room booking. REQUIRES: Name, Phone, Check-in, Check-out, Beds.")
+    @llm.Tool(description="Finalize the room booking. REQUIRES: Name, Phone, Check-in, Check-out, Beds.")
     def book_room(self, name: str, phone: str, check_in: str, check_out: str, beds: str):
         
         # 1. Calculate Price

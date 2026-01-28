@@ -1,101 +1,80 @@
 import logging
-import json
+import os
 from dotenv import load_dotenv
 from livekit import rtc
 from livekit.agents import (
-    AutoSubscribe,
+    Agent,
+    AgentServer,
+    AgentSession,
     JobContext,
     JobProcess,
-    WorkerOptions,
     cli,
-    llm,
+    inference,
+    room_io,
+    utils, # Added utils for wait_for_participant
 )
-from livekit.plugins import openai, silero, elevenlabs, turn_detector
-
-# IMPORT YOUR TOOLS HERE
-from tools import HotelAssistant 
+from livekit.plugins import noise_cancellation, silero, elevenlabs
 
 logger = logging.getLogger("agent")
 load_dotenv(".env.local")
 
-# --- PROMPTS ---
-PROMPT_TORQ = """
+class Assistant(Agent):
+    def __init__(self) -> None:
+        super().__init__(
+            instructions="""
 You are the official AI voice assistant for the Torq Agents website.
 You speak like a senior sales executive for hospitality and travel automation.
-
 Rules:
 - Keep responses under 15 words.
 - Be concise, professional, business-like.
 - Ask only one essential question at a time.
+- Do not ask for contact details.
+- Do not explain tech stack or integration details.
 - After 3 responses, always ask if they would like to book a meeting with us.
+- If outside scope, say: "I can only assist with Torq Agents demo services."
 - Always promote booking a meeting at the website's booking page.
-"""
+""")
 
-PROMPT_HOTEL = """
-You are a Senior Reservations Executive at the prestigious Demo Hotel.
-Your demeanor is professional, warm, and highly efficient.
-
-Operational Rules:
-1. Pricing: All rooms are strictly 5,000 INR per night.
-2. Booking Requirements: Collect Name, Phone, Check-in, Check-out, and no of beds.
-3. Once all details are collected, use the book_room tool to finalize.
-"""
+server = AgentServer()
 
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
 
-async def entrypoint(ctx: JobContext):
-    # 1. Connect to the Room
-    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+server.setup_fnc = prewarm
+
+@server.rtc_session()
+async def my_agent(ctx: JobContext):
+    # Connect to the room
+    await ctx.connect()
     
+    # Wait for the user to actually join before speaking
     logger.info(f"Waiting for participant in room {ctx.room.name}")
-    participant = await ctx.wait_for_participant()
+    participant = await utils.wait_for_participant(ctx.room)
+    
     logger.info(f"Participant joined: {participant.identity}")
 
-    # 2. Detect Source Website
-    source = "unknown"
-    if participant.metadata:
-        try:
-            meta = json.loads(participant.metadata)
-            source = meta.get("source_website", "torq_website")
-        except:
-            logger.warning("Could not parse metadata")
-
-    # 3. Setup Persona and Tools
-    if source == "hotel_demo":
-        logger.info("Loading Hotel Persona")
-        initial_prompt = PROMPT_HOTEL
-        f_context = HotelAssistant()
-    else:
-        logger.info("Loading Torq Persona")
-        initial_prompt = PROMPT_TORQ
-        f_context = None 
-
-    # 4. Initialize the Voice Pipeline
-    # Using the newer VoicePipelineAgent for better performance
-    agent = llm.VoicePipelineAgent(
+    session = AgentSession(
+        stt=inference.STT(model="assemblyai/universal-streaming", language="en"),
+        llm=inference.LLM(model="openai/gpt-4.1-mini"),
+        tts=inference.TTS(model="elevenlabs/eleven_flash_v2", language="en"),
+        turn_detection=None,
         vad=ctx.proc.userdata["vad"],
-        stt=openai.STT(),
-        llm=openai.LLM(
-            model="gpt-4o-mini",
-            instructions=initial_prompt,
-            fnc_ctx=f_context, # This passes your tools to the LLM
+        preemptive_generation=True,
+    )
+
+    await session.start(
+        agent=Assistant(),
+        room=ctx.room,
+        room_options=room_io.RoomOptions(
+            audio_input=room_io.AudioInputOptions(
+                noise_cancellation=lambda params: noise_cancellation.BVCTelephony()
+                if params.participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP
+                else noise_cancellation.BVC(),
+            ),
         ),
-        tts=elevenlabs.TTS(),
-        turn_detector=turn_detector.EOUModel(),
     )
 
-    # 5. Start the Agent in the Room
-    agent.start(ctx.room, participant)
-
-    # 6. Say the Greeting
-    greeting = (
-        "Welcome to Demo Hotel. How can I assist with your reservation today?"
-        if source == "hotel_demo"
-        else "Welcome to Torq Agents. How can I help you automate your business?"
-    )
-    
-    await agent.say(greeting, allow_interruptions=False)
+    await session.say("Welcome to Torq Agents, how can I help you?", allow_interruptions=False)
 
 if __name__ == "__main__":
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint, prewarm_fnc=prewarm))
+    cli.run_app(server)

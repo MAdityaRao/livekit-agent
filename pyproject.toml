@@ -17,7 +17,7 @@ dependencies = [
     "livekit-plugins-noise-cancellation",
     "livekit-plugins-assemblyai", 
     "python-dotenv",
-    "pandas>=2.3.3",
+    
 ]
 
 [dependency-groups]

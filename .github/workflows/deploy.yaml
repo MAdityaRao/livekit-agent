@@ -25,8 +25,7 @@ jobs:
           LIVEKIT_API_KEY: ${{ secrets.LIVEKIT_API_KEY }}
           LIVEKIT_API_SECRET: ${{ secrets.LIVEKIT_API_SECRET }}
 
-          # 🚨 REQUIRED: Agent ID (this is what was missing before)
-          INPUT_AGENT_IDS: ${{ secrets.AGENT_ID }}
+         
 
           # Secrets injected into the Python agent
           SECRET_LIST: |

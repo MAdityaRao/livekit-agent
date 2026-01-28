@@ -4,11 +4,11 @@ from livekit.agents import llm
 from datetime import datetime
 
 # --- YOUR CONFIGURATION ---
-# This is the URL you just gave me
 APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzevzdqkrNbwVZ3M5hIVFubVr7zwctkmwz0cHHylMD81rZL80lNB41kg4tXjhEeHFBaiQ/exec"
 ROOM_PRICE = 5000
 
-class HotelAssistant(llm.FunctionContext):
+# FIX: Removed "(llm.FunctionContext)" - just use a normal class now!
+class HotelAssistant:
     
     @llm.ai_callable(description="Check room availability for a date range.")
     def check_availability(self, check_in: str, check_out: str):
@@ -30,13 +30,12 @@ class HotelAssistant(llm.FunctionContext):
         total_price = nights * ROOM_PRICE
 
         # 2. Prepare Data 
-        # This matches the column order: Guest name | phone | check-in | check-out | Beds | price
         booking_data = {
             "name": name,
             "phone": phone,
             "checkIn": check_in,
             "checkOut": check_out,
-            "beds": "1 Double Bed",  # Default for 'one room'
+            "beds": "1 Double Bed",
             "total": total_price
         }
 

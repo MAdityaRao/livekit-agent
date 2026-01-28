@@ -15,8 +15,8 @@ class HotelAssistant:
         # We assume availability is always open for the demo
         return f"Yes, we have rooms available from {check_in} to {check_out} at {ROOM_PRICE} INR per night."
 
-    @llm.ai_callable(description="Finalize the room booking. REQUIRES: Name, Phone, Check-in, Check-out.")
-    def book_room(self, name: str, phone: str, check_in: str, check_out: str):
+    @llm.ai_callable(description="Finalize the room booking. REQUIRES: Name, Phone, Check-in, Check-out, Beds.")
+    def book_room(self, name: str, phone: str, check_in: str, check_out: str, beds: str):
         
         # 1. Calculate Price
         try:
@@ -35,7 +35,7 @@ class HotelAssistant:
             "phone": phone,
             "checkIn": check_in,
             "checkOut": check_out,
-            "beds": "1 Double Bed",
+            "beds": beds,
             "total": total_price
         }
 

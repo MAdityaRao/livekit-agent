@@ -15,7 +15,7 @@ dependencies = [
     "livekit-plugins-silero",
     "livekit-plugins-elevenlabs",
     "livekit-plugins-noise-cancellation",
-    "livekit-plugins-assemblyai",  # <--- ADDED THIS (Required for your STT)
+    "livekit-plugins-assemblyai", 
     "python-dotenv",
     "pandas>=2.3.3",
 ]

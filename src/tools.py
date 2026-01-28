@@ -1,31 +1,47 @@
 import requests
 import json
-from livekit.agents import llm
+import logging
 from datetime import datetime
+from livekit.agents import function_tool, RunContext
 
-# --- YOUR CONFIGURATION ---
+logger = logging.getLogger("hotel-tools")
+
+# --- CONFIGURATION ---
 APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzevzdqkrNbwVZ3M5hIVFubVr7zwctkmwz0cHHylMD81rZL80lNB41kg4tXjhEeHFBaiQ/exec"
 ROOM_PRICE = 5000
 
-# FIX: Removed "(llm.FunctionContext)" - just use a normal class now!
 class HotelAssistant:
-    
-    @llm.Tool(description="Check room availability for given check-in and check-out dates.")
-    def check_availability(self, check_in: str, check_out: str):
-        # We assume availability is always open for the demo
+    """
+    In the new SDK, tools are just methods in a class decorated with @function_tool.
+    You do NOT need to inherit from llm.FunctionContext anymore.
+    """
+
+    @function_tool(description="Check if rooms are available for specific dates.")
+    def check_availability(
+        self, 
+        check_in: str, 
+        check_out: str
+    ):
+        logger.info(f"Checking availability: {check_in} to {check_out}")
         return f"Yes, we have rooms available from {check_in} to {check_out} at {ROOM_PRICE} INR per night."
 
-    @llm.Tool(description="Finalize the room booking. REQUIRES: Name, Phone, Check-in, Check-out, Beds.")
-    def book_room(self, name: str, phone: str, check_in: str, check_out: str, beds: str):
-        
+    @function_tool(description="Finalize the room booking. REQUIRES: Name, Phone, Check-in, Check-out, and number of beds.")
+    def book_room(
+        self, 
+        name: str,
+        phone: str,
+        check_in: str,
+        check_out: str,
+        beds: str
+    ):
         # 1. Calculate Price
         try:
             start = datetime.strptime(check_in, "%Y-%m-%d")
             end = datetime.strptime(check_out, "%Y-%m-%d")
             nights = (end - start).days
             if nights < 1: nights = 1
-        except:
-            nights = 1 # Default to 1 night if dates are confusing
+        except Exception:
+            nights = 1
             
         total_price = nights * ROOM_PRICE
 
@@ -41,16 +57,14 @@ class HotelAssistant:
 
         # 3. Send to Google Sheets
         try:
-            print(f"🔄 Sending booking for {name} to Google Sheets...")
-            response = requests.post(APPS_SCRIPT_URL, json=booking_data)
+            # Note: Ensure 'requests' is in your requirements.txt
+            response = requests.post(APPS_SCRIPT_URL, json=booking_data, timeout=10)
             
-            if response.status_code == 200 or response.status_code == 302:
-                print("✅ Booking Saved Successfully!")
-                return f"Reservation confirmed for {name}. Total cost is {total_price} INR. You will receive a confirmation shortly."
+            if response.status_code in [200, 302]:
+                return f"Reservation confirmed for {name}. Total cost is {total_price} INR."
             else:
-                print(f"⚠️ Error: Script returned status {response.status_code}")
-                return "I have confirmed the details, but our system is slow. Please consider it booked."
+                return "The booking system is slow, but I have noted your details for processing."
                 
         except Exception as e:
-            print(f"❌ Connection Error: {e}")
-            return "System Error: Could not access the booking database."
+            logger.error(f"Request failed: {e}")
+            return "I encountered an error connecting to the booking database."

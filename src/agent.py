@@ -57,7 +57,7 @@ async def my_agent(ctx: JobContext):
         stt=inference.STT(model="assemblyai/universal-streaming", language="en"),
         llm=inference.LLM(model="openai/gpt-4.1-mini"),
         tts=inference.TTS(model="elevenlabs/eleven_flash_v2", language="en"),
-        turn_detection=None,
+        
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
     )
